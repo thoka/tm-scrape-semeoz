@@ -1,4 +1,4 @@
-# convert wp dump to json
+# convert semeoz wp dump to json
 
 fs = require 'fs',
 xml2js = require 'xml2js'
@@ -10,11 +10,8 @@ parser = new xml2js.Parser()
 map_obj = (f,obj) ->
     res = {}
     for key,value of obj
-        #console.log "change ",key, typeof value, value  
         value = f value      
         res[key] = value unless value == ""
-        #console.log "  to ", res[key]
-
     return res
 
 
@@ -30,13 +27,10 @@ main = () ->
 
     fs.readFile __dirname + '/data.xml', (err, data) ->
       parser.parseString data, (err, result) ->
-        #result = JSON.parse JSON.stringify result
 
         result = simplify_arrays result
 
-        items = result.rss.channel.item #.channel.items 
-
-        #res = []
+        items = result.rss.channel.item 
 
         for item in items
             item.categories = ( "#{c.$.domain}/#{c.$.nicename}" for c in item.category ).join " "
@@ -51,18 +45,7 @@ main = () ->
  
             delete item.guid
 
-
-            #res.push item
-
         console.log JSON.stringify items, null, 2 
 
-#test()
-
 main()
-
             
-
-
-
-
-
