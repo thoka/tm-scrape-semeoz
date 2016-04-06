@@ -1,0 +1,10 @@
+{
+  "name": "tm-scrape-semeoz",
+  "version": "0.0.1",
+  "description": "convert semeoz wp map export to csv",
+  "author": "thomas.kalka@gmail.com",
+  "license": "PD",
+  "dependencies": {
+    "xml2js": "^0.4.16"
+  }
+}
