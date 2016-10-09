@@ -1,4 +1,4 @@
-# convert semeoz wp dump to json
+# convert wordpress dump to json
 
 fs = require 'fs',
 async = require 'async'
@@ -6,13 +6,8 @@ async = require 'async'
 xml2js = require 'xml2js'
 parser = new xml2js.Parser()
 
-whois = require("whois-ux").whois
 
-YAML = require "yamljs"
-
-url_parse = require "url-parse"
-
-
+# map function f to obj recursively
 map_obj = (f,obj) ->
     res = {}
     for key,value of obj
@@ -29,57 +24,45 @@ simplify_arrays = (obj) ->
     return obj
 
 
-#whois_attributes_to_delete = "Status Nserver CountryCode PostalCode City".split " "
+flatten = (obj) ->
 
-spawn = require('child_process').spawn
+    data = {}
 
-whois_skip_urls = [
-    "www.google.com"
-]
+    collect_key_value_pairs = (path,obj) ->
+        if obj instanceof Array
+            if path.length > 0 
+                path += "."
+            for value,index in obj
+                collect_key_value_pairs  path+index, value
+            return
+        if typeof obj is 'object'
+            if path.length > 0 
+                path += "."
+            for key,value of obj
+                collect_key_value_pairs path+key, value, 
+            return
+        data[path]=obj
 
-whois = (url,cb) ->
+    collect_key_value_pairs '',obj
 
-    hostname = url_parse(url,true).hostname
-    if hostname in whois_skip_urls
-        return cb null, "SKIPPED:"+hostname
-
-    prc = spawn "whois", ["-H",hostname]
-    prc.stdout.setEncoding 'utf8'
-    res = []
-
-    prc.stdout.on 'data', (data) ->
-        data = data.toString().split "\n"
-        for line in data
-            continue if line[0] == "%"
-            #break if line[0] == ">"
-            res.push line
-
-    prc.stdout.on 'close', (code) ->
-        res = res.join "\n"   
-        cb null, res
+    return data
 
 
-add_whois = (items,url_attr, cb) ->
+l = (a...) -> console.log a
 
-    _add_whois = (item,cb) ->
-
-        whois item[url_attr], (err,res) ->
-            item.whois = res
-            cb null,item
-
-    async.mapLimit items, 5, _add_whois, cb
-
-
-main = () ->
-
-    fs.readFile __dirname + '/data.xml', (err, data) ->
+convert_xml_file_to_array = (filename,cb) ->
+    fs.readFile filename, (err, data) ->
       parser.parseString data, (err, result) ->
 
-        result = simplify_arrays result
+        return cb err, null if err
 
+        result = simplify_arrays result
         items = result.rss.channel.item 
 
+        res = []
+
         for item in items
+
             item.categories = ( "#{c.$.domain}/#{c.$.nicename}" for c in item.category ).join " "
             delete item.category
  
@@ -89,14 +72,22 @@ main = () ->
                 item["wp:postmeta:"+key] = value
             delete item["wp:postmeta"]
  
-            delete item.guid
+            # delete item.guid
 
-            item["wp:postmeta:_url_crea"]
+            # delete item["wp:postmeta:_url_crea"]
 
-        add_whois items, "wp:postmeta:_url_crea", (err,items) ->
-            console.log JSON.stringify items, null, 2
+            res.push flatten item
+
+        cb null, res
 
 
+main = () ->
+    convert_xml_file_to_array __dirname + '/data.xml', (err,items) ->
 
+        #  add_whois items, "wp:postmeta:_url_crea", (err,items) -> 
+
+        console.log JSON.stringify items, null, 2
+
+ 
 main()
             
